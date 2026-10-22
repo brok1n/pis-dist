@@ -21,28 +21,42 @@ if ($arch -ne "X64") {
     Write-Error "Unsupported architecture: $arch (only x64 is packaged)"
     exit 1
 }
-$asset = "pis-latest-x86_64-pc-windows-msvc.zip"
 
-# ---- download (gitee first, github fallback) ------------------------------
-$tmpZip = Join-Path $env:TEMP "$asset"
-$urls = @(
-    "https://gitee.com/$GiteeRepo/releases/download/latest/$asset",
-    "https://github.com/$GithubRepo/releases/download/latest/$asset"
-)
-
-$downloaded = $false
-foreach ($u in $urls) {
-    Write-Host "[pis] downloading from $u ..." -ForegroundColor DarkGray
+# ---- resolve latest release (gitee API first, github fallback) ------------
+$tag = $null
+$assetUrl = $null
+try {
+    $r = Invoke-RestMethod -Uri "https://gitee.com/api/v5/repos/$GiteeRepo/releases/latest" -TimeoutSec 15
+    $tag = $r.tag_name
+    $assetUrl = ($r.assets | Where-Object { $_.name -eq "pis-$tag-x86_64-pc-windows-msvc.zip" } | Select-Object -First 1).browser_download_url
+    Write-Host "[pis] gitee: latest=$tag" -ForegroundColor DarkGray
+} catch {
+    Write-Host "[pis]   gitee api failed: $($_.Exception.Message)" -ForegroundColor DarkYellow
+}
+if (-not $assetUrl) {
     try {
-        Invoke-WebRequest -Uri $u -OutFile $tmpZip -TimeoutSec 60 -ErrorAction Stop
-        $downloaded = $true
-        break
+        $r = Invoke-RestMethod -Uri "https://api.github.com/repos/$GithubRepo/releases/latest" -TimeoutSec 15
+        $tag = $r.tag_name
+        $assetUrl = ($r.assets | Where-Object { $_.name -eq "pis-$tag-x86_64-pc-windows-msvc.zip" } | Select-Object -First 1).browser_download_url
+        Write-Host "[pis] github: latest=$tag" -ForegroundColor DarkGray
     } catch {
-        Write-Host "[pis]   failed: $($_.Exception.Message)" -ForegroundColor DarkYellow
+        Write-Host "[pis]   github api failed: $($_.Exception.Message)" -ForegroundColor DarkYellow
     }
 }
-if (-not $downloaded) {
-    Write-Error "[pis] all sources failed. Check your network."
+if (-not $assetUrl) {
+    Write-Error "[pis] cannot resolve latest release from any source."
+    exit 1
+}
+
+$asset = "pis-$tag-x86_64-pc-windows-msvc.zip"
+
+# ---- download -------------------------------------------------------------
+$tmpZip = Join-Path $env:TEMP "$asset"
+Write-Host "[pis] downloading $asset ..." -ForegroundColor DarkGray
+try {
+    Invoke-WebRequest -Uri $assetUrl -OutFile $tmpZip -TimeoutSec 120 -ErrorAction Stop
+} catch {
+    Write-Error "[pis] download failed: $($_.Exception.Message)"
     exit 1
 }
 
