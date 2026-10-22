@@ -16,8 +16,9 @@ $GithubRepo = "brok1n/pis-dist"     # fallback
 $InstallDir = "$env:APPDATA\npm"
 
 # ---- platform detect ------------------------------------------------------
-$arch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
-if ($arch -ne "X64") {
+# Windows PowerShell 5.1 的 ProcessArchitecture 不可靠，用环境变量（全版本可靠）
+$arch = $env:PROCESSOR_ARCHITECTURE
+if ($arch -notmatch "AMD64") {
     Write-Error "Unsupported architecture: $arch (only x64 is packaged)"
     exit 1
 }
@@ -64,7 +65,13 @@ try {
 if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Force $InstallDir | Out-Null }
 $dest = Join-Path $InstallDir "pis.exe"
 Expand-Archive -Path $tmpZip -DestinationPath $env:TEMP -Force
-Copy-Item (Join-Path $env:TEMP "pis.exe") $dest -Force
+try {
+    Copy-Item (Join-Path $env:TEMP "pis.exe") $dest -Force
+} catch {
+    Write-Host "[pis] install failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[pis] if pis.exe is running (or another pis terminal is open), close it and retry." -ForegroundColor Yellow
+    exit 1
+}
 Remove-Item $tmpZip, (Join-Path $env:TEMP "pis.exe") -Force -ErrorAction SilentlyContinue
 
 Write-Host "[pis] installed: $dest" -ForegroundColor Green
