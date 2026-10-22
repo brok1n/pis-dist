@@ -65,13 +65,21 @@ try {
 if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Force $InstallDir | Out-Null }
 $dest = Join-Path $InstallDir "pis.exe"
 Expand-Archive -Path $tmpZip -DestinationPath $env:TEMP -Force
+# Windows: a running exe cannot be overwritten, but it CAN be renamed.
+# pis itself uses the same trick for auto-update.
+if (Test-Path $dest) {
+    Move-Item $dest "$dest.old" -Force
+}
 try {
-    Copy-Item (Join-Path $env:TEMP "pis.exe") $dest -Force
+    Move-Item (Join-Path $env:TEMP "pis.exe") $dest -Force
 } catch {
+    if (Test-Path "$dest.old") { Move-Item "$dest.old" $dest -Force }
     Write-Host "[pis] install failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "[pis] if pis.exe is running (or another pis terminal is open), close it and retry." -ForegroundColor Yellow
+    Write-Host "[pis] close running pis sessions and retry." -ForegroundColor Yellow
     exit 1
 }
+# running pis processes keep their (renamed) image; new launches pick up the new exe
+Remove-Item "$dest.old" -Force -ErrorAction SilentlyContinue
 Remove-Item $tmpZip, (Join-Path $env:TEMP "pis.exe") -Force -ErrorAction SilentlyContinue
 
 Write-Host "[pis] installed: $dest" -ForegroundColor Green
