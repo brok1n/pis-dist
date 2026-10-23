@@ -21,8 +21,16 @@
 
 打开 PowerShell，执行：
 
+**Gitee（国内推荐）**：
+
 ```powershell
 irm https://gitee.com/brok1n/pis-dist/raw/main/install.ps1 | iex
+```
+
+**GitHub**：
+
+```powershell
+irm https://raw.githubusercontent.com/brok1n/pis-dist/main/install.ps1 | iex
 ```
 
 - 自动下载最新版并安装到 `%APPDATA%\npm`（pi 同目录，已在系统 PATH）
