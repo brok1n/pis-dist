@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 # ---- config ---------------------------------------------------------------
 $GiteeRepo = "brok1n/pis-dist"      # primary source (direct connection in CN)
 $GithubRepo = "brok1n/pis-dist"     # fallback
-$InstallDir = "$env:APPDATA\npm"
+$InstallDir = "$env:USERPROFILE\.pi\agent\bin"
 
 # ---- platform detect ------------------------------------------------------
 # Windows PowerShell 5.1 的 ProcessArchitecture 不可靠，用环境变量（全版本可靠）
